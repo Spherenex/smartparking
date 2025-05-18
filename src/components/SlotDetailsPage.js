@@ -1,7 +1,5 @@
 
 
-
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { auth, rtdb } from '../firebase';
@@ -327,6 +325,7 @@ const SlotDetailsPage = ({ lot, onReturn }) => {
             endTime: endTime.toISOString(),
             duration: selectedDuration,
             bookingId: newBookingId,
+            spaceId: parkingSpaces[selectedSpaceIndex].id, 
           },
         ],
       };

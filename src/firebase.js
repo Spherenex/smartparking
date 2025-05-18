@@ -1,4 +1,7 @@
-// // firebase.js - Firebase configuration and utility functions
+
+
+
+
 // import { initializeApp } from 'firebase/app';
 // import { 
 //   getAuth, 
@@ -10,23 +13,16 @@
 // import { 
 //   getFirestore, 
 //   doc, 
-//   getDoc,
 //   setDoc, 
 //   updateDoc,
 //   serverTimestamp,
 //   collection,
 //   addDoc,
-//   getDocs,
-//   query,
-//   where,
-//   orderBy,
-//   limit,
-//   Timestamp,
-//   onSnapshot
+//   Timestamp
 // } from 'firebase/firestore';
 
 // // Firebase configuration
-// const firebaseConfig = {
+//  const firebaseConfig = {
 //   apiKey: "AIzaSyAFsaILmmuOOdvNywnNnBGMmnOkeFW0aEo",
 //   authDomain: "npk-values-4a297.firebaseapp.com",
 //   databaseURL: "https://npk-values-4a297-default-rtdb.firebaseio.com",
@@ -42,43 +38,87 @@
 // export const auth = getAuth(app);
 // export const db = getFirestore(app);
 
-// // Admin authentication
-// export const adminLogin = async (email, password) => {
+// // User registration
+// export const registerUser = async (userData, password) => {
 //   try {
-//     // Authenticate with Firebase
+//     // Create user with email and password in Firebase Auth
+//     const userCredential = await createUserWithEmailAndPassword(auth, userData.email, password);
+//     const user = userCredential.user;
+
+//     // Store additional user data in Firestore
+//     await setDoc(doc(db, 'users', user.uid), {
+//       ...userData,
+//       createdAt: serverTimestamp(),
+//       updatedAt: serverTimestamp()
+//     });
+
+//     // Create initial collections for user
+//     await setDoc(doc(db, 'users', user.uid, 'settings', 'preferences'), {
+//       notifications: true,
+//       theme: 'light',
+//       updatedAt: serverTimestamp()
+//     });
+
+//     return { user };
+//   } catch (error) {
+//     return { error: error.message };
+//   }
+// };
+
+// // User login
+// export const loginUser = async (email, password) => {
+//   try {
 //     const userCredential = await signInWithEmailAndPassword(auth, email, password);
 //     const user = userCredential.user;
 
-//     // Check if user has admin role in Firestore
-//     const userDoc = await getDoc(doc(db, 'users', user.uid));
-    
-//     if (userDoc.exists() && userDoc.data().role === 'admin') {
-//       // Update last login time
-//       await updateDoc(doc(db, 'users', user.uid), {
-//         lastLogin: serverTimestamp()
-//       });
-      
-//       return { 
-//         success: true, 
-//         user: {
-//           uid: user.uid,
-//           email: user.email,
-//           ...userDoc.data()
-//         } 
-//       };
-//     } else {
-//       // User is not an admin, sign out
-//       await firebaseSignOut(auth);
-//       return { 
-//         success: false, 
-//         error: 'Access denied. You do not have administrator privileges.' 
-//       };
-//     }
+//     // Update last login time
+//     await updateDoc(doc(db, 'users', user.uid), {
+//       lastLogin: serverTimestamp()
+//     });
+
+//     return { user };
 //   } catch (error) {
-//     return { 
-//       success: false, 
-//       error: error.message 
-//     };
+//     return { error: error.message };
+//   }
+// };
+
+// // Send OTP (simulated)
+// export const sendOTP = async (phoneNumber, otp) => {
+//   try {
+//     // In a real application, this would integrate with Firebase Phone Auth
+//     // or a third-party SMS provider to send the OTP
+//     console.log(`Sending OTP ${otp} to ${phoneNumber}`);
+    
+//     // Log the OTP sending for demonstration
+//     await addDoc(collection(db, 'otpLogs'), {
+//       phoneNumber,
+//       sentAt: serverTimestamp(),
+//       // Do not store actual OTP in logs in a real app
+//       // This is just for demonstration
+//       success: true
+//     });
+    
+//     return { success: true };
+//   } catch (error) {
+//     return { error: error.message };
+//   }
+// };
+
+// // Verify OTP (simulated)
+// export const verifyOTP = async (phoneNumber, otp) => {
+//   try {
+//     // In a real application, this would verify with Firebase Phone Auth
+//     console.log(`Verifying OTP ${otp} for ${phoneNumber}`);
+    
+//     // For demo purposes, simulate verification success
+//     // This would normally check against Firebase Auth or your backend
+    
+//     // Find user by phone number (in a real app, use phone auth directly)
+//     // This is just a placeholder logic
+    
+//     return { success: true };
+//   } catch (error) {
+//     return { error: error.message };
 //   }
 // };
 
@@ -92,294 +132,120 @@
 //   }
 // };
 
-// // Get dashboard statistics
-// export const getDashboardStats = async () => {
+// // Password reset
+// export const resetPassword = async (email) => {
 //   try {
-//     // Get total parking spots
-//     const parkingLotsSnapshot = await getDocs(collection(db, 'parkingLots'));
-//     let totalSpots = 0;
-//     parkingLotsSnapshot.forEach(doc => {
-//       // Assuming each parking lot document has a totalSpaces field
-//       const lotData = doc.data();
-//       if (lotData.totalSpaces) {
-//         totalSpots += lotData.totalSpaces;
-//       }
+//     await sendPasswordResetEmail(auth, email);
+//     return { success: true };
+//   } catch (error) {
+//     return { error: error.message };
+//   }
+// };
+
+// // Create a new parking booking
+// export const createBooking = async (userId, bookingData) => {
+//   try {
+//     // Generate a booking ID
+//     const bookingId = `PK-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
+    
+//     // Prepare booking data
+//     const booking = {
+//       ...bookingData,
+//       bookingId,
+//       bookingTime: serverTimestamp(),
+//       startTime: Timestamp.fromDate(new Date(bookingData.startTime)),
+//       endTime: Timestamp.fromDate(new Date(bookingData.endTime)),
+//       status: 'active',
+//       createdAt: serverTimestamp()
+//     };
+    
+//     // Add to user's bookings
+//     const bookingRef = await addDoc(collection(db, 'users', userId, 'bookings'), booking);
+    
+//     // Create notification for booking
+//     await addDoc(collection(db, 'users', userId, 'notifications'), {
+//       type: 'booking',
+//       message: `Booking confirmed for ${bookingData.parkingLotName}, Space #${bookingData.spaceId}`,
+//       bookingId: bookingId,
+//       read: false,
+//       timestamp: serverTimestamp()
 //     });
     
-//     // Get active users count
-//     const usersSnapshot = await getDocs(collection(db, 'users'));
-//     const activeUsers = usersSnapshot.size;
-    
-//     // Get vacant spots (total - occupied)
-//     // This would need a more complex query in a real application
-//     // For simplicity, we'll use a placeholder calculation
-//     const vacantSpots = Math.floor(totalSpots * 0.3); // Assume 30% vacant for demo
-    
-//     // Calculate daily revenue
-//     // In a real app, you would sum transactions for the current day
-//     const today = new Date();
-//     today.setHours(0, 0, 0, 0);
-    
-//     const bookingsQuery = query(
-//       collection(db, 'bookings'),
-//       where('bookingTime', '>=', today)
-//     );
-    
-//     const bookingsSnapshot = await getDocs(bookingsQuery);
-//     let dailyRevenue = 0;
-//     bookingsSnapshot.forEach(doc => {
-//       const bookingData = doc.data();
-//       if (bookingData.amount) {
-//         dailyRevenue += parseFloat(bookingData.amount);
-//       }
-//     });
-    
-//     return {
-//       totalSpots,
-//       activeUsers,
-//       dailyRevenue: dailyRevenue.toFixed(2),
-//       vacantSpots
+//     return { 
+//       success: true, 
+//       bookingId: bookingId,
+//       id: bookingRef.id
 //     };
 //   } catch (error) {
-//     console.error('Error getting dashboard stats:', error);
-//     // Return default values if there's an error
-//     return {
-//       totalSpots: 0,
-//       activeUsers: 0,
-//       dailyRevenue: 0,
-//       vacantSpots: 0
-//     };
+//     console.error('Error creating booking:', error);
+//     return { error: error.message };
 //   }
 // };
 
-// // Get recent activities
-// export const getRecentActivities = async (limit = 10) => {
+// // Update a parking space status
+// export const updateParkingSpaceStatus = async (parkingLotId, spaceId, isOccupied) => {
 //   try {
-//     // Create a combined query for recent bookings
-//     const bookingsQuery = query(
-//       collection(db, 'bookings'),
-//       orderBy('bookingTime', 'desc'),
-//       limit(limit)
-//     );
-    
-//     const bookingsSnapshot = await getDocs(bookingsQuery);
-//     const activities = [];
-    
-//     bookingsSnapshot.forEach(doc => {
-//       const booking = doc.data();
-//       const user = booking.userName || 'User'; // Fallback if userName is not available
-      
-//       activities.push({
-//         id: doc.id,
-//         user: user,
-//         action: `booked spot ${booking.spaceId} at ${booking.parkingLotName}`,
-//         time: formatTimeAgo(booking.bookingTime.toDate())
-//       });
+//     const spaceRef = doc(db, 'parkingLots', parkingLotId, 'spaces', spaceId);
+//     await updateDoc(spaceRef, {
+//       occupied: isOccupied,
+//       lastUpdated: serverTimestamp()
 //     });
     
-//     return activities;
+//     return { success: true };
 //   } catch (error) {
-//     console.error('Error getting recent activities:', error);
-//     return [];
+//     return { error: error.message };
 //   }
 // };
 
-// // Get parking lot status
-// export const getParkingLotStatus = async () => {
-//   try {
-//     const parkingLotsSnapshot = await getDocs(collection(db, 'parkingLots'));
-//     let available = 0;
-//     let occupied = 0;
-//     let reserved = 0;
-    
-//     for (const lotDoc of parkingLotsSnapshot.docs) {
-//       const lotId = lotDoc.id;
-//       const spacesSnapshot = await getDocs(collection(db, 'parkingLots', lotId, 'spaces'));
-      
-//       spacesSnapshot.forEach(spaceDoc => {
-//         const space = spaceDoc.data();
-//         if (space.status === 'available') {
-//           available++;
-//         } else if (space.status === 'occupied') {
-//           occupied++;
-//         } else if (space.status === 'reserved') {
-//           reserved++;
-//         }
-//       });
-//     }
-    
-//     return {
-//       available,
-//       occupied,
-//       reserved
-//     };
-//   } catch (error) {
-//     console.error('Error getting parking lot status:', error);
-//     return {
-//       available: 0,
-//       occupied: 0,
-//       reserved: 0
-//     };
-//   }
-// };
-
-// // Helper function to format time ago
-// function formatTimeAgo(date) {
-//   const now = new Date();
-//   const diffInSeconds = Math.floor((now - date) / 1000);
+// // Add this to your firebase.js file
+// // Firebase function to create a booking
+// export const completeBooking = async (userId, bookingData) => {
+//   const { selectedLot, selectedSpaceIndex, selectedDateTime, selectedDuration, amount, bookingId } = bookingData;
   
-//   if (diffInSeconds < 60) {
-//     return `${diffInSeconds} seconds ago`;
-//   }
-  
-//   const diffInMinutes = Math.floor(diffInSeconds / 60);
-//   if (diffInMinutes < 60) {
-//     return `${diffInMinutes} ${diffInMinutes === 1 ? 'minute' : 'minutes'} ago`;
-//   }
-  
-//   const diffInHours = Math.floor(diffInMinutes / 60);
-//   if (diffInHours < 24) {
-//     return `${diffInHours} ${diffInHours === 1 ? 'hour' : 'hours'} ago`;
-//   }
-  
-//   const diffInDays = Math.floor(diffInHours / 24);
-//   return `${diffInDays} ${diffInDays === 1 ? 'day' : 'days'} ago`;
-// }
-
-// // Setup admin user if it doesn't exist (for demo purposes)
-// export const setupAdminUser = async () => {
-//   const DEFAULT_ADMIN_EMAIL = 'admin@gmail.com';
-//   const DEFAULT_ADMIN_PASSWORD = 'admin123';
+//   const selectedDurationHours = parseInt(selectedDuration.split(' ')[0]);
+//   const startTime = new Date(selectedDateTime);
+//   const endTime = new Date(startTime.getTime() + selectedDurationHours * 60 * 60 * 1000);
   
 //   try {
-//     // Try to find if admin user already exists
-//     try {
-//       const userCredential = await signInWithEmailAndPassword(auth, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
-//       const user = userCredential.user;
-      
-//       // Check if user document exists
-//       const userDoc = await getDoc(doc(db, 'users', user.uid));
-//       if (!userDoc.exists() || userDoc.data().role !== 'admin') {
-//         // Create or update admin document
-//         await setDoc(doc(db, 'users', user.uid), {
-//           email: DEFAULT_ADMIN_EMAIL,
-//           role: 'admin',
-//           name: 'Admin User',
-//           createdAt: serverTimestamp(),
-//           updatedAt: serverTimestamp()
-//         });
-//       }
-      
-//       // Sign out after setup
-//       await firebaseSignOut(auth);
-//       return { success: true };
-//     } catch (signInError) {
-//       // If sign in fails, create new admin user
-//       if (signInError.code === 'auth/user-not-found') {
-//         try {
-//           const userCredential = await createUserWithEmailAndPassword(auth, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
-//           const user = userCredential.user;
-          
-//           await setDoc(doc(db, 'users', user.uid), {
-//             email: DEFAULT_ADMIN_EMAIL,
-//             role: 'admin',
-//             name: 'Admin User',
-//             createdAt: serverTimestamp(),
-//             updatedAt: serverTimestamp()
-//           });
-          
-//           // Sign out after setup
-//           await firebaseSignOut(auth);
-//           return { success: true };
-//         } catch (createError) {
-//           console.error('Error creating admin user:', createError);
-//           return { success: false, error: createError.message };
-//         }
-//       } else {
-//         console.error('Error during admin setup:', signInError);
-//         return { success: false, error: signInError.message };
-//       }
-//     }
+//     // Create booking document in Firestore
+//     const bookingRef = collection(db, 'users', userId, 'bookings');
+//     await addDoc(bookingRef, {
+//       bookingId: bookingId,
+//       parkingLotName: selectedLot.name,
+//       spaceId: selectedLot.id,
+//       location: selectedLot.location,
+//       startTime: Timestamp.fromDate(startTime),
+//       endTime: Timestamp.fromDate(endTime),
+//       duration: selectedDuration,
+//       amount: amount,
+//       status: 'active',
+//       paymentMethod: 'card',
+//       bookingTime: serverTimestamp(),
+//       vehicleNumber: '', // This would come from user profile
+//     });
+    
+//     // Add notification
+//     const notificationRef = collection(db, 'users', userId, 'notifications');
+//     await addDoc(notificationRef, {
+//       type: 'booking',
+//       message: `Your parking booking at ${selectedLot.name}, Space #${selectedLot.id} is confirmed.`,
+//       read: false,
+//       timestamp: serverTimestamp()
+//     });
+    
+//     // Update parking space status in real-time
+//     // In a real app, you'd have a collection for parking spaces
+//     // For demo, we'll assume the data structure matches local storage
+    
+//     return { success: true };
 //   } catch (error) {
-//     console.error('Error in admin setup process:', error);
-//     return { success: false, error: error.message };
+//     console.error('Error completing booking in Firebase:', error);
+//     return { error: error.message };
 //   }
 // };
 
-// // Listen for real-time updates to dashboard stats
-// export const listenToDashboardStats = (callback) => {
-//   // Listen to bookings collection for revenue updates
-//   const bookingsListener = onSnapshot(collection(db, 'bookings'), (snapshot) => {
-//     getDashboardStats().then(stats => {
-//       callback(stats);
-//     });
-//   });
-  
-//   // Listen to users collection for user count updates
-//   const usersListener = onSnapshot(collection(db, 'users'), (snapshot) => {
-//     getDashboardStats().then(stats => {
-//       callback(stats);
-//     });
-//   });
-  
-//   // Listen to parking lots for space updates
-//   const parkingLotsListener = onSnapshot(collection(db, 'parkingLots'), (snapshot) => {
-//     getDashboardStats().then(stats => {
-//       callback(stats);
-//     });
-//   });
-  
-//   // Return a function to unsubscribe from all listeners
-//   return () => {
-//     bookingsListener();
-//     usersListener();
-//     parkingLotsListener();
-//   };
-// };
 
-// // Listen for real-time updates to activities
-// export const listenToRecentActivities = (callback, limitCount = 10) => {
-//   const activitiesListener = onSnapshot(
-//     query(collection(db, 'bookings'), orderBy('bookingTime', 'desc'), limit(limitCount)),
-//     (snapshot) => {
-//       const activities = [];
-      
-//       snapshot.forEach(doc => {
-//         const booking = doc.data();
-//         const user = booking.userName || 'User';
-        
-//         activities.push({
-//           id: doc.id,
-//           user: user,
-//           action: `booked spot ${booking.spaceId} at ${booking.parkingLotName}`,
-//           time: formatTimeAgo(booking.bookingTime.toDate())
-//         });
-//       });
-      
-//       callback(activities);
-//     }
-//   );
-  
-//   return activitiesListener;
-// };
-
-// // Listen for real-time updates to parking status
-// export const listenToParkingStatus = (callback) => {
-//   // This is a simplified version for demo purposes
-//   // In a real app, you would track individual space status changes
-  
-//   const statusListener = onSnapshot(collection(db, 'parkingLots'), () => {
-//     getParkingLotStatus().then(status => {
-//       callback(status);
-//     });
-//   });
-  
-//   return statusListener;
-// };
-
-
-
-// firebase.js - Enhanced with Realtime Database integration
+// firebase.js - Updated with Realtime Database support
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -401,9 +267,9 @@ import {
   where,
   orderBy,
   limit,
-  onSnapshot,
   getDocs,
-  Timestamp
+  Timestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import {
   getDatabase,
@@ -432,7 +298,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const rtdb = getDatabase(app); // Realtime Database
+export const rtdb = getDatabase(app); // Adding Realtime Database export
 
 // User registration
 export const registerUser = async (userData, password) => {
@@ -478,43 +344,43 @@ export const loginUser = async (email, password) => {
   }
 };
 
-// Admin authentication
-export const adminLogin = async (email, password) => {
+// Send OTP (simulated)
+export const sendOTP = async (phoneNumber, otp) => {
   try {
-    // Authenticate with Firebase
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-
-    // Check if user has admin role in Firestore
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    // In a real application, this would integrate with Firebase Phone Auth
+    // or a third-party SMS provider to send the OTP
+    console.log(`Sending OTP ${otp} to ${phoneNumber}`);
     
-    if (userDoc.exists() && userDoc.data().role === 'admin') {
-      // Update last login time
-      await updateDoc(doc(db, 'users', user.uid), {
-        lastLogin: serverTimestamp()
-      });
-      
-      return { 
-        success: true, 
-        user: {
-          uid: user.uid,
-          email: user.email,
-          ...userDoc.data()
-        } 
-      };
-    } else {
-      // User is not an admin, sign out
-      await firebaseSignOut(auth);
-      return { 
-        success: false, 
-        error: 'Access denied. You do not have administrator privileges.' 
-      };
-    }
+    // Log the OTP sending for demonstration
+    await addDoc(collection(db, 'otpLogs'), {
+      phoneNumber,
+      sentAt: serverTimestamp(),
+      // Do not store actual OTP in logs in a real app
+      // This is just for demonstration
+      success: true
+    });
+    
+    return { success: true };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error.message 
-    };
+    return { error: error.message };
+  }
+};
+
+// Verify OTP (simulated)
+export const verifyOTP = async (phoneNumber, otp) => {
+  try {
+    // In a real application, this would verify with Firebase Phone Auth
+    console.log(`Verifying OTP ${otp} for ${phoneNumber}`);
+    
+    // For demo purposes, simulate verification success
+    // This would normally check against Firebase Auth or your backend
+    
+    // Find user by phone number (in a real app, use phone auth directly)
+    // This is just a placeholder logic
+    
+    return { success: true };
+  } catch (error) {
+    return { error: error.message };
   }
 };
 
@@ -538,9 +404,62 @@ export const resetPassword = async (email) => {
   }
 };
 
-// **** BOOKING FUNCTIONS - REALTIME DATABASE ****
+// Create a new parking booking
+export const createBooking = async (userId, bookingData) => {
+  try {
+    // Generate a booking ID
+    const bookingId = `PK-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
+    
+    // Prepare booking data
+    const booking = {
+      ...bookingData,
+      bookingId,
+      bookingTime: serverTimestamp(),
+      startTime: Timestamp.fromDate(new Date(bookingData.startTime)),
+      endTime: Timestamp.fromDate(new Date(bookingData.endTime)),
+      status: 'active',
+      createdAt: serverTimestamp()
+    };
+    
+    // Add to user's bookings
+    const bookingRef = await addDoc(collection(db, 'users', userId, 'bookings'), booking);
+    
+    // Create notification for booking
+    await addDoc(collection(db, 'users', userId, 'notifications'), {
+      type: 'booking',
+      message: `Booking confirmed for ${bookingData.parkingLotName}, Space #${bookingData.spaceId}`,
+      bookingId: bookingId,
+      read: false,
+      timestamp: serverTimestamp()
+    });
+    
+    return { 
+      success: true, 
+      bookingId: bookingId,
+      id: bookingRef.id
+    };
+  } catch (error) {
+    console.error('Error creating booking:', error);
+    return { error: error.message };
+  }
+};
 
-// Create a booking in both Firestore and Realtime Database
+// Update a parking space status
+export const updateParkingSpaceStatus = async (parkingLotId, spaceId, isOccupied) => {
+  try {
+    const spaceRef = doc(db, 'parkingLots', parkingLotId, 'spaces', spaceId);
+    await updateDoc(spaceRef, {
+      occupied: isOccupied,
+      lastUpdated: serverTimestamp()
+    });
+    
+    return { success: true };
+  } catch (error) {
+    return { error: error.message };
+  }
+};
+
+// Enhanced completeBooking function with Realtime Database support
 export const completeBooking = async (userId, bookingData) => {
   const { selectedLot, selectedSpaceIndex, selectedDateTime, selectedDuration, amount, bookingId } = bookingData;
   
@@ -563,10 +482,10 @@ export const completeBooking = async (userId, bookingData) => {
     const bookingRef = collection(db, 'users', userId, 'bookings');
     const firestoreBooking = await addDoc(bookingRef, {
       bookingId: newBookingId,
-      parkingLotId: selectedLot.id,
-      parkingLotName: selectedLot.name,
+      parkingLotId: selectedLot.id || 'lot1',
+      parkingLotName: selectedLot.name || 'Parking Lot',
       spaceId: selectedSpaceIndex + 1, // Convert to 1-based index for display
-      location: selectedLot.location,
+      location: selectedLot.location || 'Main Location',
       startTime: Timestamp.fromDate(startTime),
       endTime: Timestamp.fromDate(endTime),
       duration: selectedDuration,
@@ -581,7 +500,7 @@ export const completeBooking = async (userId, bookingData) => {
     const notificationRef = collection(db, 'users', userId, 'notifications');
     await addDoc(notificationRef, {
       type: 'booking',
-      message: `Your parking booking at ${selectedLot.name}, Space #${selectedSpaceIndex + 1} is confirmed.`,
+      message: `Your parking booking at ${selectedLot.name || 'Parking Lot'}, Space #${selectedSpaceIndex + 1} is confirmed.`,
       read: false,
       timestamp: serverTimestamp()
     });
@@ -590,8 +509,8 @@ export const completeBooking = async (userId, bookingData) => {
     await addDoc(collection(db, 'bookings'), {
       bookingId: newBookingId,
       userId: userId,
-      parkingLotId: selectedLot.id,
-      parkingLotName: selectedLot.name,
+      parkingLotId: selectedLot.id || 'lot1',
+      parkingLotName: selectedLot.name || 'Parking Lot',
       spaceId: selectedSpaceIndex + 1,
       startTime: Timestamp.fromDate(startTime),
       endTime: Timestamp.fromDate(endTime),
@@ -603,8 +522,11 @@ export const completeBooking = async (userId, bookingData) => {
     });
     
     // 4. Write to Realtime Database for real-time updates
-    // Store parking space status
-    await update(ref(rtdb, `parkingSpaces/${selectedLot.id}/spaces/${selectedSpaceIndex}`), {
+    // Ensure parkingLot exists
+    const lotId = selectedLot.id || 'lot1';
+    
+    // Update parking space status
+    await update(ref(rtdb, `parkingSpaces/${lotId}/spaces/${selectedSpaceIndex}`), {
       id: selectedSpaceIndex + 1,
       occupied: true,
       reserved: true,
@@ -614,7 +536,7 @@ export const completeBooking = async (userId, bookingData) => {
     });
     
     // Update parking lot statistics
-    const lotRef = ref(rtdb, `parkingLots/${selectedLot.id}`);
+    const lotRef = ref(rtdb, `parkingLots/${lotId}`);
     const snapshot = await get(lotRef);
     
     if (snapshot.exists()) {
@@ -627,9 +549,9 @@ export const completeBooking = async (userId, bookingData) => {
     } else {
       // Create new entry with default values
       await set(lotRef, {
-        id: selectedLot.id,
-        name: selectedLot.name,
-        location: selectedLot.location,
+        id: lotId,
+        name: selectedLot.name || 'Parking Lot',
+        location: selectedLot.location || 'Main Location',
         totalSpaces: 10,
         occupiedSpaces: 1,
         availableSpaces: 9,
@@ -687,7 +609,7 @@ const updateDashboardStats = async (amount) => {
   }
 };
 
-// **** ADMIN DASHBOARD FUNCTIONS - REALTIME DATABASE ****
+// **** ADMIN DASHBOARD FUNCTIONS ****
 
 // Get dashboard statistics
 export const getDashboardStats = async () => {
@@ -695,11 +617,9 @@ export const getDashboardStats = async () => {
     // Get data from Realtime Database
     const statsRef = ref(rtdb, 'dashboardStats');
     const parkingLotsRef = ref(rtdb, 'parkingLots');
-    const usersRef = ref(rtdb, 'users');
     
     const statsSnapshot = await get(statsRef);
     const lotsSnapshot = await get(parkingLotsRef);
-    const usersSnapshot = await get(usersRef);
     
     let totalSpots = 0;
     let occupiedSpots = 0;
@@ -729,10 +649,15 @@ export const getDashboardStats = async () => {
       }
     }
     
-    // Count active users
+    // Count active users (simple approximation)
     let activeUsers = 0;
-    if (usersSnapshot.exists()) {
-      activeUsers = Object.keys(usersSnapshot.val()).length;
+    
+    try {
+      const usersSnapshot = await getDocs(collection(db, 'users'));
+      activeUsers = usersSnapshot.size;
+    } catch (err) {
+      console.log('Error counting users:', err);
+      activeUsers = 0;
     }
     
     // Calculate vacant spots
@@ -854,61 +779,52 @@ function formatTimeAgo(date) {
   return `${diffInDays} ${diffInDays === 1 ? 'day' : 'days'} ago`;
 }
 
-// Listen for real-time updates to dashboard stats
+// Real-time listeners for dashboard
 export const listenToDashboardStats = (callback) => {
-  // Listen to dashboard stats in Realtime Database
   const statsRef = ref(rtdb, 'dashboardStats');
-  const unsubscribe = onValue(statsRef, async () => {
-    // Get updated stats and call the callback
+  return onValue(statsRef, async () => {
     const stats = await getDashboardStats();
     callback(stats);
   });
-  
-  return unsubscribe;
 };
 
-// Listen for real-time updates to activities
 export const listenToRecentActivities = (callback, limitCount = 5) => {
-  // Use Firestore onSnapshot for activities
-  const activitiesListener = onSnapshot(
-    query(collection(db, 'bookings'), orderBy('bookingTime', 'desc'), limit(limitCount)),
-    (snapshot) => {
-      const activities = [];
-      
-      snapshot.forEach(doc => {
-        const booking = doc.data();
-        const user = booking.userName || 'User';
-        const bookingTime = booking.bookingTime?.toDate() || new Date();
-        
-        activities.push({
-          id: doc.id,
-          user: user,
-          action: `booked spot ${booking.spaceId} at ${booking.parkingLotName}`,
-          time: formatTimeAgo(bookingTime)
-        });
-      });
-      
-      callback(activities);
-    }
+  // Use Firestore onSnapshot
+  const activitiesQuery = query(
+    collection(db, 'bookings'), 
+    orderBy('bookingTime', 'desc'), 
+    limit(limitCount)
   );
   
-  return activitiesListener;
+  return onSnapshot(activitiesQuery, (snapshot) => {
+    const activities = [];
+    
+    snapshot.forEach(doc => {
+      const booking = doc.data();
+      const user = booking.userName || 'User';
+      const bookingTime = booking.bookingTime?.toDate() || new Date();
+      
+      activities.push({
+        id: doc.id,
+        user: user,
+        action: `booked spot ${booking.spaceId} at ${booking.parkingLotName}`,
+        time: formatTimeAgo(bookingTime)
+      });
+    });
+    
+    callback(activities);
+  });
 };
 
-// Listen for real-time updates to parking status
 export const listenToParkingStatus = (callback) => {
-  // Listen to parking lots in Realtime Database
   const lotsRef = ref(rtdb, 'parkingLots');
-  const unsubscribe = onValue(lotsRef, async () => {
-    // Get updated parking status and call the callback
+  return onValue(lotsRef, async () => {
     const status = await getParkingLotStatus();
     callback(status);
   });
-  
-  return unsubscribe;
 };
 
-// Setup initial data in Realtime Database if it doesn't exist
+// Setup initial data in Realtime Database
 export const setupInitialData = async () => {
   try {
     // Check if parkingLots exists
@@ -928,7 +844,6 @@ export const setupInitialData = async () => {
       });
       
       // Create default spaces for this lot
-      const spacesRef = ref(rtdb, `parkingSpaces/lot1/spaces`);
       const spaces = {};
       
       for (let i = 0; i < 10; i++) {
@@ -939,7 +854,7 @@ export const setupInitialData = async () => {
         };
       }
       
-      await set(spacesRef, spaces);
+      await set(ref(rtdb, `parkingSpaces/lot1/spaces`), spaces);
     }
     
     // Check if dashboardStats exists
@@ -959,61 +874,5 @@ export const setupInitialData = async () => {
   } catch (error) {
     console.error('Error setting up initial data:', error);
     return false;
-  }
-};
-
-// Setup admin user in Firebase if it doesn't exist
-export const setupAdminUser = async () => {
-  const DEFAULT_ADMIN_EMAIL = 'admin@gmail.com';
-  const DEFAULT_ADMIN_PASSWORD = 'admin123';
-  
-  try {
-    // Try to sign in with default admin credentials
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
-      const user = userCredential.user;
-      
-      // Check if user document exists with admin role
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      
-      if (!userDoc.exists() || userDoc.data().role !== 'admin') {
-        // Create or update admin document
-        await setDoc(doc(db, 'users', user.uid), {
-          email: DEFAULT_ADMIN_EMAIL,
-          role: 'admin',
-          name: 'Admin User',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-      }
-      
-      // Sign out after setup
-      await firebaseSignOut(auth);
-      return { success: true };
-      
-    } catch (signInError) {
-      // If sign in fails, create new admin user
-      if (signInError.code === 'auth/user-not-found') {
-        const userCredential = await createUserWithEmailAndPassword(auth, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
-        const user = userCredential.user;
-        
-        await setDoc(doc(db, 'users', user.uid), {
-          email: DEFAULT_ADMIN_EMAIL,
-          role: 'admin',
-          name: 'Admin User',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-        
-        // Sign out after setup
-        await firebaseSignOut(auth);
-        return { success: true };
-      }
-      
-      return { success: false, error: signInError.message };
-    }
-  } catch (error) {
-    console.error('Error in admin setup process:', error);
-    return { success: false, error: error.message };
   }
 };

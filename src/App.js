@@ -1,281 +1,139 @@
 
 
 
-// import React, { useState, useEffect } from 'react';
-// import AdminLogin from './components/AdminLogin';
-// import AdminDashboard from './components/AdminDashboard';
-// import { auth, db } from './firebase';
-// import { onAuthStateChanged } from 'firebase/auth';
-// import { doc, getDoc, collection, query, onSnapshot } from 'firebase/firestore';
-
-// const App = () => {
-//   const [isAuthenticated, setIsAuthenticated] = useState(false);
-//   const [currentUser, setCurrentUser] = useState(null);
-//   const [loading, setLoading] = useState(true);
-//   const [allBookings, setAllBookings] = useState([]); // State to store all bookings
-
-//   // Fetch all bookings for all users
-//   useEffect(() => {
-//     const fetchAllBookings = () => {
-//       // Since bookings are stored under each user's subcollection, we first need to get all users
-//       const usersRef = collection(db, 'users');
-//       const unsubscribe = onSnapshot(usersRef, (usersSnapshot) => {
-//         const bookingsPromises = [];
-//         usersSnapshot.forEach((userDoc) => {
-//           const userId = userDoc.id;
-//           const bookingsRef = collection(db, 'users', userId, 'bookings');
-//           const bookingsQuery = query(bookingsRef);
-//           // Create a promise to fetch bookings for this user
-//           bookingsPromises.push(
-//             new Promise((resolve) => {
-//               onSnapshot(bookingsQuery, (bookingsSnapshot) => {
-//                 const userBookings = [];
-//                 bookingsSnapshot.forEach((bookingDoc) => {
-//                   userBookings.push({
-//                     id: bookingDoc.id,
-//                     userId: userId,
-//                     ...bookingDoc.data(),
-//                     bookingTime: bookingDoc.data().bookingTime
-//                       ? new Date(bookingDoc.data().bookingTime)
-//                       : null,
-//                     startTime: bookingDoc.data().startTime
-//                       ? new Date(bookingDoc.data().startTime)
-//                       : null,
-//                     endTime: bookingDoc.data().endTime
-//                       ? new Date(bookingDoc.data().endTime)
-//                       : null,
-//                   });
-//                 });
-//                 resolve(userBookings);
-//               });
-//             })
-//           );
-//         });
-
-//         // Wait for all bookings to be fetched
-//         Promise.all(bookingsPromises).then((allBookingsArrays) => {
-//           // Flatten the array of arrays into a single array
-//           const flattenedBookings = allBookingsArrays.flat();
-//           // Sort by bookingTime (newest first)
-//           flattenedBookings.sort((a, b) => {
-//             const timeA = a.bookingTime ? a.bookingTime.getTime() : 0;
-//             const timeB = b.bookingTime ? b.bookingTime.getTime() : 0;
-//             return timeB - timeA;
-//           });
-//           console.log('App (Admin): Fetched all bookings:', flattenedBookings);
-//           setAllBookings(flattenedBookings);
-//         });
-//       });
-
-//       return unsubscribe;
-//     };
-
-//     fetchAllBookings();
-//   }, []);
-
-//   // Listen for authentication state changes
-//   useEffect(() => {
-//     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-//       if (user) {
-//         try {
-//           const userDoc = await getDoc(doc(db, 'users', user.uid));
-          
-//           if (userDoc.exists() && userDoc.data().role === 'admin') {
-//             setIsAuthenticated(true);
-//             setCurrentUser({
-//               uid: user.uid,
-//               email: user.email,
-//               ...userDoc.data()
-//             });
-//           } else {
-//             setIsAuthenticated(false);
-//             setCurrentUser(null);
-//           }
-//         } catch (error) {
-//           console.error('Error fetching user data:', error);
-//           setIsAuthenticated(false);
-//           setCurrentUser(null);
-//         }
-//       } else {
-//         setIsAuthenticated(false);
-//         setCurrentUser(null);
-//       }
-//       setLoading(false);
-//     });
-    
-//     return () => unsubscribe();
-//   }, []);
-
-//   const handleLogin = (user) => {
-//     setIsAuthenticated(true);
-//     setCurrentUser(user);
-//   };
-
-//   const handleLogout = () => {
-//     setIsAuthenticated(false);
-//     setCurrentUser(null);
-//   };
-
-//   if (loading) {
-//     return (
-//       <div className="app-loading">
-//         <div className="loading-spinner"></div>
-//         <p>Loading application...</p>
-//       </div>
-//     );
-//   }
-
-//   return isAuthenticated ? (
-//     <AdminDashboard
-//       currentUser={currentUser}
-//       onLogout={handleLogout}
-//       allBookings={allBookings} // Pass allBookings to AdminDashboard
-//     />
-//   ) : (
-//     <AdminLogin onLoginSuccess={handleLogin} />
-//   );
-// };
-
-// export default App;
-
 
 import React, { useState, useEffect } from 'react';
-import AdminLogin from './components/AdminLogin';
-import AdminDashboard from './components/AdminDashboard';
-import { auth, db } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, limit, onSnapshot, getDoc, doc } from 'firebase/firestore';
+import { auth, db } from './firebase';
+import Header from './components/Header';
+import Login from './components/Login';
+import Register from './components/Register';
+import Dashboard from './components/Dashboard';
+import ParkingHistory from './components/ParkingHistory';
+import UserProfile from './components/UserProfile';
+import './App.css';
 
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [allBookings, setAllBookings] = useState([]); // State to store all bookings
+  const [activeView, setActiveView] = useState('dashboard');
+  const [authView, setAuthView] = useState('login');
+  const [recentBookings, setRecentBookings] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
 
-  // Fetch all bookings for all users
+  // Authentication state monitoring
   useEffect(() => {
-    if (!isAuthenticated) return; // Only fetch bookings when authenticated
-    
-    const fetchAllBookings = () => {
-      // Since bookings are stored under each user's subcollection, we first need to get all users
-      const usersRef = collection(db, 'users');
-      const unsubscribe = onSnapshot(usersRef, (usersSnapshot) => {
-        const bookingsPromises = [];
-        usersSnapshot.forEach((userDoc) => {
-          const userId = userDoc.id;
-          const bookingsRef = collection(db, 'users', userId, 'bookings');
-          const bookingsQuery = query(bookingsRef);
-          // Create a promise to fetch bookings for this user
-          bookingsPromises.push(
-            new Promise((resolve) => {
-              onSnapshot(bookingsQuery, (bookingsSnapshot) => {
-                const userBookings = [];
-                bookingsSnapshot.forEach((bookingDoc) => {
-                  userBookings.push({
-                    id: bookingDoc.id,
-                    userId: userId,
-                    ...bookingDoc.data(),
-                    bookingTime: bookingDoc.data().bookingTime
-                      ? new Date(bookingDoc.data().bookingTime)
-                      : null,
-                    startTime: bookingDoc.data().startTime
-                      ? new Date(bookingDoc.data().startTime)
-                      : null,
-                    endTime: bookingDoc.data().endTime
-                      ? new Date(bookingDoc.data().endTime)
-                      : null,
-                  });
-                });
-                resolve(userBookings);
-              });
-            })
-          );
-        });
-
-        // Wait for all bookings to be fetched
-        Promise.all(bookingsPromises).then((allBookingsArrays) => {
-          // Flatten the array of arrays into a single array
-          const flattenedBookings = allBookingsArrays.flat();
-          // Sort by bookingTime (newest first)
-          flattenedBookings.sort((a, b) => {
-            const timeA = a.bookingTime ? a.bookingTime.getTime() : 0;
-            const timeB = b.bookingTime ? b.bookingTime.getTime() : 0;
-            return timeB - timeA;
-          });
-          console.log('App (Admin): Fetched all bookings:', flattenedBookings);
-          setAllBookings(flattenedBookings);
-        });
-      });
-
-      return unsubscribe;
-    };
-
-    const unsubscribe = fetchAllBookings();
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [isAuthenticated]);
-
-  // Listen for authentication state changes
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          
-          if (userDoc.exists() && userDoc.data().role === 'admin') {
-            setIsAuthenticated(true);
-            setCurrentUser({
-              uid: user.uid,
-              email: user.email,
-              ...userDoc.data()
-            });
-          } else {
-            setIsAuthenticated(false);
-            setCurrentUser(null);
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-          setIsAuthenticated(false);
-          setCurrentUser(null);
-        }
-      } else {
-        setIsAuthenticated(false);
-        setCurrentUser(null);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
       setLoading(false);
+      
+      if (currentUser) {
+        fetchUserData(currentUser.uid);
+      } else {
+        // Reset user data when logged out
+        setUserProfile(null);
+        setRecentBookings([]);
+      }
     });
-    
+
     return () => unsubscribe();
   }, []);
 
-  const handleLogin = (user) => {
-    setIsAuthenticated(true);
-    setCurrentUser(user);
+  // Fetch user data from Firestore
+  const fetchUserData = async (userId) => {
+    try {
+      // Get user profile
+      const userRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        setUserProfile(userSnap.data());
+      }
+      
+      // Subscribe to recent bookings
+      const bookingsRef = collection(db, 'users', userId, 'bookings');
+      const bookingsQuery = query(
+        bookingsRef,
+        where('status', '!=', 'cancelled'),
+        limit(5)
+      );
+      
+      const unsubscribe = onSnapshot(bookingsQuery, (snapshot) => {
+        const bookings = [];
+        snapshot.forEach((doc) => {
+          bookings.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        setRecentBookings(bookings);
+      });
+      
+      return unsubscribe;
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
   };
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    setCurrentUser(null);
+  // Toggle between login and register views
+  const switchAuthView = () => {
+    setAuthView(authView === 'login' ? 'register' : 'login');
   };
 
+  // If still loading, show loading screen
   if (loading) {
     return (
-      <div className="app-loading">
+      <div className="loading-screen">
         <div className="loading-spinner"></div>
-        <p>Loading application...</p>
+        <p>Loading...</p>
       </div>
     );
   }
 
-  return isAuthenticated ? (
-    <AdminDashboard
-      currentUser={currentUser}
-      onLogout={handleLogout}
-      allBookings={allBookings} // Pass allBookings to AdminDashboard
-    />
-  ) : (
-    <AdminLogin onLoginSuccess={handleLogin} />
+  // If user is not logged in, show auth screens
+  if (!user) {
+    return (
+      <div className="auth-wrapper">
+        {authView === 'login' ? (
+          <Login onSwitch={switchAuthView} />
+        ) : (
+          <Register onSwitch={switchAuthView} />
+        )}
+      </div>
+    );
+  }
+
+  // Main application with header and content
+  return (
+    <div className="app-container">
+      <Header 
+        setActiveView={setActiveView} 
+        activeView={activeView} 
+      />
+      
+      <main className="app-content">
+        {activeView === 'dashboard' && (
+          <Dashboard 
+            userProfile={userProfile}
+          />
+        )}
+        
+        {activeView === 'history' && (
+          <ParkingHistory 
+            recentBookings={recentBookings}
+            userId={user.uid}
+          />
+        )}
+        
+        {activeView === 'profile' && (
+          <UserProfile 
+            userProfile={userProfile}
+            userId={user.uid}
+          />
+        )}
+      </main>
+    </div>
   );
 };
 

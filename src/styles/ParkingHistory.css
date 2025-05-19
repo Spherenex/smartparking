@@ -725,3 +725,105 @@ button {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+/* Add these styles to your ParkingHistory.css file */
+
+.pay-now-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.pay-now-btn:hover {
+  background-color: #388e3c;
+}
+
+.payment-success-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background-color: #e8f5e9;
+  border-radius: 8px;
+  margin: 12px 0;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.payment-success-message svg {
+  color: #4CAF50;
+  flex-shrink: 0;
+}
+
+/* Improve appearance of other buttons */
+.booking-actions {
+  margin-top: 15px;
+}
+
+.cancel-booking-btn {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: 100%;
+}
+
+.cancel-booking-btn:hover {
+  background-color: #d32f2f;
+}
+
+.payment-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.payment-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cash-btn {
+  background-color: #ff9800;
+  color: white;
+  border: none;
+}
+
+.cash-btn:hover {
+  background-color: #f57c00;
+}
+
+.razorpay-btn {
+  background-color: #3f51b5;
+  color: white;
+  border: none;
+}
+
+.razorpay-btn:hover {
+  background-color: #303f9f;
+}

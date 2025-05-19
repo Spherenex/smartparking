@@ -1,11 +1,8 @@
 
-
-
-
 // import React, { useState, useEffect } from 'react';
 // import { rtdb } from '../firebase';
-// import { ref, onValue, query, orderByChild, equalTo, update } from 'firebase/database';
-// import { Calendar, Clock, MapPin, Activity, ChevronRight } from 'lucide-react';
+// import { ref, onValue, query, orderByChild, equalTo, update, get, set } from 'firebase/database';
+// import { Calendar, Clock, MapPin, Activity, ChevronRight, CreditCard, Banknote, CheckCircle } from 'lucide-react';
 // import '../styles/ParkingHistory.css';
 
 // const ParkingHistory = ({ userId, onBookingsFetched }) => {
@@ -14,6 +11,8 @@
 //   const [error, setError] = useState(null);
 //   const [filter, setFilter] = useState('all');
 //   const [expandedBooking, setExpandedBooking] = useState(null);
+//   const [processingPayment, setProcessingPayment] = useState({});
+//   const [paymentSuccess, setPaymentSuccess] = useState({});
 
 //   useEffect(() => {
 //     console.log('ParkingHistory useEffect - userId:', userId);
@@ -115,6 +114,170 @@
 //     }
 //   };
 
+//   // Handle direct payment (Pay Now button)
+//   const handleDirectPayment = async (bookingId) => {
+//     setProcessingPayment(prev => ({ ...prev, [bookingId]: true }));
+//     try {
+//       // Use default payment method 'cash'
+//       await handlePayment(bookingId, 'cash', true);
+//     } catch (err) {
+//       console.error("Error processing direct payment:", err);
+//       setError('Failed to process payment. Please try again.');
+//       setProcessingPayment(prev => ({ ...prev, [bookingId]: false }));
+//     }
+//   };
+
+//   // Handle payment processing
+//   const handlePayment = async (bookingId, paymentMethod, isDirectPayment = false) => {
+//     if (!isDirectPayment) {
+//       setProcessingPayment(prev => ({ ...prev, [bookingId]: true }));
+//     }
+    
+//     try {
+//       const booking = bookings.find(b => b.id === bookingId);
+//       if (!booking) {
+//         throw new Error("Booking not found");
+//       }
+
+//       // Update booking with payment info
+//       const bookingRef = ref(rtdb, `bookings/${bookingId}`);
+//       await update(bookingRef, {
+//         status: 'completed',
+//         paymentMethod: paymentMethod,
+//         paidAt: new Date().toISOString()
+//       });
+
+//       // If the booking has a spaceId, update the parking space to available
+//       if (booking.spaceId && booking.lotId) {
+//         const spaceRef = ref(rtdb, `parkingSpaces/${booking.lotId}/spaces/space${booking.spaceId}`);
+//         const spaceSnapshot = await get(spaceRef);
+        
+//         if (spaceSnapshot.exists()) {
+//           await update(spaceRef, { 
+//             occupied: false 
+//           });
+          
+//           // Also update the bookings array to mark this booking as completed
+//           if (spaceSnapshot.val().bookings && Array.isArray(spaceSnapshot.val().bookings)) {
+//             const updatedBookings = spaceSnapshot.val().bookings.map(b => {
+//               if (b.bookingId === booking.bookingId) {
+//                 return {...b, status: 'completed'};
+//               }
+//               return b;
+//             });
+//             await update(spaceRef, { bookings: updatedBookings });
+//           }
+//         }
+//       }
+
+//       // Update occupied_slots array to remove this slot
+//       const occupiedSlotsRef = ref(rtdb, 'occupied_slots');
+//       const occupiedSlotsSnapshot = await get(occupiedSlotsRef);
+      
+//       if (occupiedSlotsSnapshot.exists()) {
+//         try {
+//           const slotsData = occupiedSlotsSnapshot.val();
+//           let occupiedSlots = Array.isArray(slotsData) ? 
+//             slotsData : 
+//             typeof slotsData === 'string' ? 
+//               JSON.parse(slotsData) : 
+//               [];
+          
+//           // Remove this space from occupied slots
+//           const updatedSlots = occupiedSlots.filter(id => id !== parseInt(booking.spaceId));
+//           await set(occupiedSlotsRef, JSON.stringify(updatedSlots));
+//         } catch (error) {
+//           console.error("Error updating occupied slots:", error);
+//         }
+//       }
+
+//       // Clear active slot if this was the active booking (legacy support)
+//       const slotRef = ref(rtdb, 'slot');
+//       const slotSnapshot = await get(slotRef);
+      
+//       if (slotSnapshot.exists()) {
+//         const slotValue = slotSnapshot.val();
+//         const slotNumber = parseInt(slotValue.replace(/"/g, ''));
+        
+//         if (slotNumber === parseInt(booking.spaceId)) {
+//           // Use set instead of update for primitive values
+//           await set(slotRef, JSON.stringify("0"));
+//         }
+//       }
+
+//       // Update connection status
+//       const connectionRef = ref(rtdb, 'connection_status');
+//       const connectionSnapshot = await get(connectionRef);
+//       if (connectionSnapshot.exists()) {
+//         const currentValue = parseInt(connectionSnapshot.val());
+//         if (currentValue > 0) {
+//           // Use set instead of update for primitive values
+//           await set(connectionRef, currentValue - 1);
+//         }
+//       }
+
+//       // Update parking status in Firebase
+//       const statusRef = ref(rtdb, 'parkingStatus');
+//       const statusSnapshot = await get(statusRef);
+//       if (statusSnapshot.exists()) {
+//         const currentStatus = statusSnapshot.val() || { available: 0, occupied: 0, reserved: 0 };
+//         await update(statusRef, {
+//           available: (currentStatus.available || 0) + 1,
+//           occupied: Math.max(0, (currentStatus.occupied || 0) - 1)
+//         });
+//       }
+
+//       // Update dashboard stats
+//       const statsRef = ref(rtdb, 'dashboardStats');
+//       const statsSnapshot = await get(statsRef);
+//       if (statsSnapshot.exists()) {
+//         const currentStats = statsSnapshot.val();
+//         if (currentStats) {
+//           await update(statsRef, {
+//             vacantSpots: (currentStats.vacantSpots || 0) + 1
+//           });
+//         }
+//       }
+
+//       // Update local state
+//       const updatedBookings = bookings.map((b) =>
+//         b.id === bookingId
+//           ? { 
+//               ...b, 
+//               status: 'completed', 
+//               paymentMethod: paymentMethod,
+//               paidAt: new Date() 
+//             }
+//           : b
+//       );
+      
+//       setBookings(updatedBookings);
+
+//       // Set payment success message
+//       setPaymentSuccess(prev => ({ 
+//         ...prev, 
+//         [bookingId]: true 
+//       }));
+
+//       // Clear payment success after 5 seconds
+//       setTimeout(() => {
+//         setPaymentSuccess(prev => ({ 
+//           ...prev, 
+//           [bookingId]: false 
+//         }));
+//       }, 5000);
+
+//       if (onBookingsFetched) {
+//         onBookingsFetched(updatedBookings);
+//       }
+//     } catch (err) {
+//       console.error("Error processing payment:", err);
+//       setError('Failed to process payment. Please try again.');
+//     } finally {
+//       setProcessingPayment(prev => ({ ...prev, [bookingId]: false }));
+//     }
+//   };
+
 //   const formatDateTime = (date) => {
 //     if (!date) return 'N/A';
 
@@ -167,6 +330,8 @@
 
 //     if (booking.status === 'cancelled') {
 //       return 'cancelled';
+//     } else if (booking.status === 'completed') {
+//       return 'completed';
 //     } else if (startTime && endTime) {
 //       if (now < startTime) {
 //         return 'active';
@@ -177,6 +342,24 @@
 //       }
 //     }
 //     return booking.status;
+//   };
+
+//   // Function to check if booking is verified
+//   const isBookingVerified = (booking) => {
+//     // Check if booking has been checked in and checked out (verified)
+//     return booking.checkedIn && 
+//            (booking.checkedOut || booking.verificationResult === 1) && 
+//            booking.status !== 'completed' && 
+//            booking.status !== 'cancelled';
+//   };
+
+//   // Function to check if booking should show Pay Now button - UPDATED
+//   const shouldShowPayNow = (booking) => {
+//     const displayStatus = determineBookingStatus(booking);
+//     // Show Pay Now button for all active bookings that aren't completed or cancelled
+//     return displayStatus === 'active' && 
+//            booking.status !== 'completed' && 
+//            booking.status !== 'cancelled';
 //   };
 
 //   return (
@@ -210,6 +393,11 @@
 //         <div className="bookings-list">
 //           {bookings.map((booking) => {
 //             const displayStatus = determineBookingStatus(booking);
+//             const isVerified = isBookingVerified(booking);
+//             const isProcessingPayment = processingPayment[booking.id];
+//             const isPaymentSuccessful = paymentSuccess[booking.id];
+//             const showPayNow = shouldShowPayNow(booking);
+            
 //             return (
 //               <div
 //                 key={booking.id}
@@ -268,7 +456,15 @@
 //                         <div className="payment-amount">₹{booking.amount}</div>
 //                       </div>
 //                       <div className="payment-method">
-//                         {booking.paymentMethod === 'card' ? 'Card Payment' : 'Online Payment'}
+//                         {booking.paymentMethod ? 
+//                           `${booking.paymentMethod.charAt(0).toUpperCase() + booking.paymentMethod.slice(1)} Payment` : 
+//                           (booking.status === 'completed' ? 'Payment Completed' : 'Payment Pending')
+//                         }
+//                         {booking.paymentId && (
+//                           <div className="payment-id">
+//                             Transaction ID: {booking.paymentId.substring(0, 10)}...
+//                           </div>
+//                         )}
 //                       </div>
 //                     </div>
 
@@ -282,7 +478,28 @@
 //                       </div>
 //                     </div>
 
-//                     {displayStatus === 'active' && (
+//                     {/* Payment Success Message */}
+//                     {isPaymentSuccessful && (
+//                       <div className="payment-success-message">
+//                         <CheckCircle size={20} />
+//                         <span>Payment successful! The parking slot is now available for others.</span>
+//                       </div>
+//                     )}
+
+//                     {/* Pay Now Button */}
+//                     {showPayNow && !isProcessingPayment && !isPaymentSuccessful && (
+//                       <div className="booking-actions">
+//                         <button
+//                           className="pay-now-btn"
+//                           onClick={() => handleDirectPayment(booking.id)}
+//                         >
+//                           Pay Now
+//                         </button>
+//                       </div>
+//                     )}
+
+//                     {/* Cancel Button */}
+//                     {displayStatus === 'active' && !isProcessingPayment && !isPaymentSuccessful && (
 //                       <div className="booking-actions">
 //                         <button
 //                           className="cancel-booking-btn"
@@ -290,6 +507,37 @@
 //                         >
 //                           Cancel Booking
 //                         </button>
+//                       </div>
+//                     )}
+
+//                     {/* Payment options for verified bookings */}
+//                     {isVerified && !isProcessingPayment && !isPaymentSuccessful && (
+//                       <div className="payment-options">
+//                         <h4>Select Payment Method</h4>
+//                         <div className="payment-buttons">
+//                           <button
+//                             className="payment-btn cash-btn"
+//                             onClick={() => handlePayment(booking.id, 'cash')}
+//                           >
+//                             <Banknote size={18} />
+//                             Cash
+//                           </button>
+//                           <button
+//                             className="payment-btn razorpay-btn"
+//                             onClick={() => handlePayment(booking.id, 'razorpay')}
+//                           >
+//                             <CreditCard size={18} />
+//                             Razorpay
+//                           </button>
+//                         </div>
+//                       </div>
+//                     )}
+
+//                     {/* Processing Payment Indicator */}
+//                     {isProcessingPayment && (
+//                       <div className="processing-payment">
+//                         <div className="loading-spinner"></div>
+//                         <p>Processing payment...</p>
 //                       </div>
 //                     )}
 //                   </div>
@@ -307,10 +555,12 @@
 
 
 
+
+
 import React, { useState, useEffect } from 'react';
 import { rtdb } from '../firebase';
-import { ref, onValue, query, orderByChild, equalTo, update, get, set } from 'firebase/database';
-import { Calendar, Clock, MapPin, Activity, ChevronRight, CreditCard, Banknote } from 'lucide-react';
+import { ref, onValue, query, orderByChild, equalTo, update, get, set, push, serverTimestamp } from 'firebase/database';
+import { Calendar, Clock, MapPin, Activity, ChevronRight, CreditCard, Banknote, CheckCircle } from 'lucide-react';
 import '../styles/ParkingHistory.css';
 
 const ParkingHistory = ({ userId, onBookingsFetched }) => {
@@ -320,6 +570,7 @@ const ParkingHistory = ({ userId, onBookingsFetched }) => {
   const [filter, setFilter] = useState('all');
   const [expandedBooking, setExpandedBooking] = useState(null);
   const [processingPayment, setProcessingPayment] = useState({});
+  const [paymentSuccess, setPaymentSuccess] = useState({});
 
   useEffect(() => {
     console.log('ParkingHistory useEffect - userId:', userId);
@@ -398,11 +649,80 @@ const ParkingHistory = ({ userId, onBookingsFetched }) => {
 
   const cancelBooking = async (bookingId) => {
     try {
+      const booking = bookings.find(b => b.id === bookingId);
+      if (!booking) {
+        throw new Error("Booking not found");
+      }
+
       const bookingRef = ref(rtdb, `bookings/${bookingId}`);
       await update(bookingRef, {
         status: 'cancelled',
         cancelledAt: new Date().toISOString(),
       });
+
+      // Release the parking slot
+      if (booking.spaceId && booking.lotId) {
+        // 1. Update the parking space to be available
+        const spaceRef = ref(rtdb, `parkingSpaces/${booking.lotId}/spaces/space${booking.spaceId}`);
+        const spaceSnapshot = await get(spaceRef);
+        if (spaceSnapshot.exists()) {
+          await update(spaceRef, { occupied: false });
+
+          // Update bookings array to mark this as cancelled
+          if (spaceSnapshot.val().bookings && Array.isArray(spaceSnapshot.val().bookings)) {
+            const updatedBookings = spaceSnapshot.val().bookings.map(b => {
+              if (b.bookingId === booking.bookingId) {
+                return {...b, status: 'cancelled'};
+              }
+              return b;
+            });
+            await update(spaceRef, { bookings: updatedBookings });
+          }
+        }
+
+        // 2. Remove from occupied_slots
+        const occupiedSlotsRef = ref(rtdb, 'occupied_slots');
+        const occupiedSlotsSnapshot = await get(occupiedSlotsRef);
+        if (occupiedSlotsSnapshot.exists()) {
+          try {
+            const slotsData = occupiedSlotsSnapshot.val();
+            let occupiedSlots = Array.isArray(slotsData) ? 
+              slotsData : 
+              typeof slotsData === 'string' ? 
+                JSON.parse(slotsData) : 
+                [];
+            
+            // Remove this space from occupied slots
+            const updatedSlots = occupiedSlots.filter(id => id !== parseInt(booking.spaceId));
+            await set(occupiedSlotsRef, JSON.stringify(updatedSlots));
+          } catch (error) {
+            console.error("Error updating occupied slots:", error);
+          }
+        }
+
+        // 3. Update parking status
+        const statusRef = ref(rtdb, 'parkingStatus');
+        const statusSnapshot = await get(statusRef);
+        if (statusSnapshot.exists()) {
+          const currentStatus = statusSnapshot.val() || { available: 0, occupied: 0, reserved: 0 };
+          await update(statusRef, {
+            available: (currentStatus.available || 0) + 1,
+            occupied: Math.max(0, (currentStatus.occupied || 0) - 1)
+          });
+        }
+
+        // 4. Update dashboard stats
+        const statsRef = ref(rtdb, 'dashboardStats');
+        const statsSnapshot = await get(statsRef);
+        if (statsSnapshot.exists()) {
+          const currentStats = statsSnapshot.val();
+          if (currentStats) {
+            await update(statsRef, {
+              vacantSpots: (currentStats.vacantSpots || 0) + 1
+            });
+          }
+        }
+      }
 
       const updatedBookings = bookings.map((booking) =>
         booking.id === bookingId
@@ -421,9 +741,25 @@ const ParkingHistory = ({ userId, onBookingsFetched }) => {
     }
   };
 
-  // Handle payment processing
-  const handlePayment = async (bookingId, paymentMethod) => {
+  // Handle direct payment (Pay Now button)
+  const handleDirectPayment = async (bookingId) => {
     setProcessingPayment(prev => ({ ...prev, [bookingId]: true }));
+    try {
+      // Use default payment method 'cash'
+      await handlePayment(bookingId, 'cash', true);
+    } catch (err) {
+      console.error("Error processing direct payment:", err);
+      setError('Failed to process payment. Please try again.');
+      setProcessingPayment(prev => ({ ...prev, [bookingId]: false }));
+    }
+  };
+
+  // Handle payment processing
+  const handlePayment = async (bookingId, paymentMethod, isDirectPayment = false) => {
+    if (!isDirectPayment) {
+      setProcessingPayment(prev => ({ ...prev, [bookingId]: true }));
+    }
+    
     try {
       const booking = bookings.find(b => b.id === bookingId);
       if (!booking) {
@@ -444,11 +780,45 @@ const ParkingHistory = ({ userId, onBookingsFetched }) => {
         const spaceSnapshot = await get(spaceRef);
         
         if (spaceSnapshot.exists()) {
-          await update(spaceRef, { occupied: false });
+          await update(spaceRef, { 
+            occupied: false 
+          });
+          
+          // Also update the bookings array to mark this booking as completed
+          if (spaceSnapshot.val().bookings && Array.isArray(spaceSnapshot.val().bookings)) {
+            const updatedBookings = spaceSnapshot.val().bookings.map(b => {
+              if (b.bookingId === booking.bookingId) {
+                return {...b, status: 'completed'};
+              }
+              return b;
+            });
+            await update(spaceRef, { bookings: updatedBookings });
+          }
         }
       }
 
-      // Clear active slot if this was the active booking
+      // Update occupied_slots array to remove this slot
+      const occupiedSlotsRef = ref(rtdb, 'occupied_slots');
+      const occupiedSlotsSnapshot = await get(occupiedSlotsRef);
+      
+      if (occupiedSlotsSnapshot.exists()) {
+        try {
+          const slotsData = occupiedSlotsSnapshot.val();
+          let occupiedSlots = Array.isArray(slotsData) ? 
+            slotsData : 
+            typeof slotsData === 'string' ? 
+              JSON.parse(slotsData) : 
+              [];
+          
+          // Remove this space from occupied slots
+          const updatedSlots = occupiedSlots.filter(id => id !== parseInt(booking.spaceId));
+          await set(occupiedSlotsRef, JSON.stringify(updatedSlots));
+        } catch (error) {
+          console.error("Error updating occupied slots:", error);
+        }
+      }
+
+      // Clear active slot if this was the active booking (legacy support)
       const slotRef = ref(rtdb, 'slot');
       const slotSnapshot = await get(slotRef);
       
@@ -473,6 +843,40 @@ const ParkingHistory = ({ userId, onBookingsFetched }) => {
         }
       }
 
+      // Update parking status in Firebase
+      const statusRef = ref(rtdb, 'parkingStatus');
+      const statusSnapshot = await get(statusRef);
+      if (statusSnapshot.exists()) {
+        const currentStatus = statusSnapshot.val() || { available: 0, occupied: 0, reserved: 0 };
+        await update(statusRef, {
+          available: (currentStatus.available || 0) + 1,
+          occupied: Math.max(0, (currentStatus.occupied || 0) - 1)
+        });
+      }
+
+      // Update dashboard stats
+      const statsRef = ref(rtdb, 'dashboardStats');
+      const statsSnapshot = await get(statsRef);
+      if (statsSnapshot.exists()) {
+        const currentStats = statsSnapshot.val();
+        if (currentStats) {
+          await update(statsRef, {
+            vacantSpots: (currentStats.vacantSpots || 0) + 1
+          });
+        }
+      }
+
+      // Add activity record
+      const activitiesRef = ref(rtdb, 'recentActivities');
+      const userName = booking.userName || 'User';
+      await push(activitiesRef, {
+        user: userName,
+        userId: booking.userId,
+        action: `completed payment for Space #${booking.spaceId}`,
+        time: new Date().toLocaleString(),
+        timestamp: serverTimestamp()
+      });
+
       // Update local state
       const updatedBookings = bookings.map((b) =>
         b.id === bookingId
@@ -486,6 +890,20 @@ const ParkingHistory = ({ userId, onBookingsFetched }) => {
       );
       
       setBookings(updatedBookings);
+
+      // Set payment success message
+      setPaymentSuccess(prev => ({ 
+        ...prev, 
+        [bookingId]: true 
+      }));
+
+      // Clear payment success after 5 seconds
+      setTimeout(() => {
+        setPaymentSuccess(prev => ({ 
+          ...prev, 
+          [bookingId]: false 
+        }));
+      }, 5000);
 
       if (onBookingsFetched) {
         onBookingsFetched(updatedBookings);
@@ -573,6 +991,15 @@ const ParkingHistory = ({ userId, onBookingsFetched }) => {
            booking.status !== 'cancelled';
   };
 
+  // Function to check if booking should show Pay Now button
+  const shouldShowPayNow = (booking) => {
+    const displayStatus = determineBookingStatus(booking);
+    // Show Pay Now button for all active bookings that aren't completed or cancelled
+    return displayStatus === 'active' && 
+           booking.status !== 'completed' && 
+           booking.status !== 'cancelled';
+  };
+
   return (
     <div className="parking-history">
       <div className="history-header">
@@ -606,6 +1033,8 @@ const ParkingHistory = ({ userId, onBookingsFetched }) => {
             const displayStatus = determineBookingStatus(booking);
             const isVerified = isBookingVerified(booking);
             const isProcessingPayment = processingPayment[booking.id];
+            const isPaymentSuccessful = paymentSuccess[booking.id];
+            const showPayNow = shouldShowPayNow(booking);
             
             return (
               <div
@@ -617,7 +1046,7 @@ const ParkingHistory = ({ userId, onBookingsFetched }) => {
                   onClick={() => toggleExpandBooking(booking.id)}
                 >
                   <div className="booking-basic-info">
-                    <h3>{booking.parkingLotName}</h3>
+                    <h3>{booking.parkingLotName || booking.lotName}</h3>
                     <div className="booking-meta">
                       <span className="booking-id">ID: {booking.bookingId}</span>
                       <span className={`booking-status ${getStatusClass(displayStatus)}`}>
@@ -684,17 +1113,31 @@ const ParkingHistory = ({ userId, onBookingsFetched }) => {
                         {booking.vehicleNumber && (
                           <div className="vehicle-info">Vehicle: {booking.vehicleNumber}</div>
                         )}
-                        {/* {booking.checkinVehicleNumber && (
-                          <div className="vehicle-info">Check-in Vehicle: {booking.checkinVehicleNumber}</div>
-                        )}
-                        {booking.checkoutVehicleNumber && (
-                          <div className="vehicle-info">Checkout Vehicle: {booking.checkoutVehicleNumber}</div>
-                        )} */}
                       </div>
                     </div>
 
-                    {/* Conditional rendering based on booking status */}
-                    {displayStatus === 'active' && !isVerified && !isProcessingPayment && (
+                    {/* Payment Success Message */}
+                    {isPaymentSuccessful && (
+                      <div className="payment-success-message">
+                        <CheckCircle size={20} />
+                        <span>Payment successful! The parking slot is now available for others.</span>
+                      </div>
+                    )}
+
+                    {/* Pay Now Button */}
+                    {showPayNow && !isProcessingPayment && !isPaymentSuccessful && (
+                      <div className="booking-actions">
+                        <button
+                          className="pay-now-btn"
+                          onClick={() => handleDirectPayment(booking.id)}
+                        >
+                          Pay Now
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Cancel Button */}
+                    {displayStatus === 'active' && !isProcessingPayment && !isPaymentSuccessful && (
                       <div className="booking-actions">
                         <button
                           className="cancel-booking-btn"
@@ -706,7 +1149,7 @@ const ParkingHistory = ({ userId, onBookingsFetched }) => {
                     )}
 
                     {/* Payment options for verified bookings */}
-                    {isVerified && !isProcessingPayment && (
+                    {isVerified && !isProcessingPayment && !isPaymentSuccessful && (
                       <div className="payment-options">
                         <h4>Select Payment Method</h4>
                         <div className="payment-buttons">

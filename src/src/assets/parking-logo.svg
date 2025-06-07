@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="256" cy="256" r="248" fill="#F7F9FC" stroke="#0056B3" stroke-width="16"/>
+  
+  <!-- Letter P -->
+  <path d="M160 130H280C306.5 130 328 151.5 328 178V210C328 236.5 306.5 258 280 258H200V370H160V130Z" fill="#0056B3"/>
+  <path d="M200 170V218H270C281.046 218 290 209.046 290 198V190C290 178.954 281.046 170 270 170H200Z" fill="#F7F9FC"/>
+  
+  <!-- Parking Lines -->
+  <rect x="180" y="290" width="152" height="16" rx="8" fill="#0056B3"/>
+  <rect x="180" y="330" width="152" height="16" rx="8" fill="#0056B3"/>
+  
+  <!-- Car Silhouette -->
+  <path d="M372 220C386.5 220 396 229.5 396 244V270H348V244C348 229.5 357.5 220 372 220Z" fill="#0056B3"/>
+  <path d="M396 270V310C396 317.5 390 324 382 324H362C354 324 348 317.5 348 310V270H396Z" fill="#0056B3"/>
+  <circle cx="358" cy="290" r="10" fill="#F7F9FC"/>
+  <circle cx="386" cy="290" r="10" fill="#F7F9FC"/>
+</svg>
